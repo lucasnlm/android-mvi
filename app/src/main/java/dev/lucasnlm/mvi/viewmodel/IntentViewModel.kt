@@ -22,8 +22,7 @@ abstract class IntentViewModel<Event, State> : ViewModel() {
         viewModelScope.launch {
             eventBroadcast
                 .asFlow()
-                .map(::mapEventToState)
-                .filterNotNull()
+                .flatMapConcat(::mapEventToState)
                 .collect { mutableState.value = it }
         }
     }
@@ -32,9 +31,16 @@ abstract class IntentViewModel<Event, State> : ViewModel() {
         eventBroadcast.send(event)
     }
 
+    override fun onCleared() {
+        super.onCleared()
+        eventBroadcast.close()
+    }
+
     abstract fun initialState(): State
 
-    abstract suspend fun mapEventToState(event: Event): State?
+    abstract suspend fun mapEventToState(event: Event): Flow<State>
 
     fun observeState(): StateFlow<State> = mutableState
+
+    fun observeEvent(): Flow<Event> = eventBroadcast.asFlow()
 }
